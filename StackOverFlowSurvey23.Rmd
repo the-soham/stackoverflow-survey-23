@@ -1,0 +1,201 @@
+---
+title: "StackOverFlow Survey 2023"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: yeti
+    social: menu
+    orientation: columns
+    vertical_layout: fill
+engine: shiny
+runtime: shiny
+---
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(dplyr)
+library(stringr)
+library(highcharter)
+library(tidyverse)
+
+# Read the dataset
+survey <- read.csv('survey.csv')
+
+# Assuming your dataset is named 'survey'
+edlevel_data <- reactive({
+  survey %>% 
+    filter(!is.na(EdLevel)) %>%  
+    group_by(EdLevel) %>%
+    summarise(count = n()) %>%
+    mutate(percentage = (count / sum(count)) * 100) %>%
+    arrange(desc(percentage))
+})
+
+learning_data <- reactive({
+  survey %>% 
+    filter(!is.na(LearnCode) & !grepl("Other \\(please specify\\)", LearnCode)) %>%  
+    separate_rows(LearnCode, sep = ";") %>%
+    group_by(LearnCode) %>%
+    summarise(count = n()) %>%
+    mutate(percentage = (count / nrow(survey)) * 100) %>%
+    arrange(desc(percentage))
+})
+
+learning_online <- reactive({
+  survey |> 
+    filter(!is.na(LearnCodeOnline) & !grepl("Other \\(Please specify\\)", LearnCodeOnline)) |>
+    separate_rows(LearnCodeOnline, sep = ";") |>
+    group_by(LearnCodeOnline) |>
+    summarise(count = n()) |>
+    mutate(percentage = (count / nrow(survey)) * 100) |>
+    arrange(desc(percentage)) |>
+    top_n(10)
+    
+})
+
+
+# Create charts
+output$edlevel_chart <- renderHighchart({
+  if (input$display_option == "By Percentage") {
+    chart <- highchart() %>%
+      hc_chart(type = "bar") %>%
+      hc_xAxis(categories = edlevel_data()$EdLevel) %>%
+      hc_yAxis(title = list(text = "Percentage")) %>%
+      hc_tooltip(pointFormat = "Percentage: {point.y:.2f}%") %>%
+      hc_plotOptions(
+        series = list(dataLabels = list(enabled = TRUE, format = "{point.y:.2f}%"))
+      ) %>%
+      hc_add_series(data = edlevel_data()$percentage, name = "Percentage") %>%
+      hc_legend(enabled = FALSE)
+    return(chart)
+  } else {
+    chart <- highchart() %>%
+      hc_chart(type = "bar") %>%
+      hc_xAxis(categories = edlevel_data()$EdLevel) %>%
+      hc_yAxis(title = list(text = "Count")) %>%
+      hc_tooltip(pointFormat = "Count: {point.y}") %>%
+      hc_plotOptions(
+        series = list(dataLabels = list(enabled = TRUE, format = "{point.y}"))
+      ) %>%
+      hc_add_series(data = edlevel_data()$count, name = "Count") %>%
+      hc_legend(enabled = FALSE)
+    return(chart)
+  }
+})
+
+output$learning_chart <- renderHighchart({
+  if (input$display_option == "By Percentage") {
+    chart <- highchart() %>%
+      hc_chart(type = "bar") %>%
+      hc_xAxis(categories = learning_data()$LearnCode) %>%
+      hc_yAxis(title = list(text = "Percentage")) %>%
+      hc_tooltip(pointFormat = "Percentage: {point.y:.2f}%") %>%
+      hc_plotOptions(
+        series = list(dataLabels = list(enabled = TRUE, format = "{point.y:.2f}%"))
+      ) %>%
+      hc_add_series(data = learning_data()$percentage, name = "Percentage") %>%
+      hc_legend(enabled = FALSE)
+    return(chart)
+  } else {
+    chart <- highchart() %>%
+      hc_chart(type = "bar") %>%
+      hc_xAxis(categories = learning_data()$LearnCode) %>%
+      hc_yAxis(title = list(text = "Count")) %>%
+      hc_tooltip(pointFormat = "Count: {point.y}") %>%
+      hc_plotOptions(
+        series = list(dataLabels = list(enabled = TRUE, format = "{point.y}"))
+      ) %>%
+      hc_add_series(data = learning_data()$count, name = "Count") %>%
+      hc_legend(enabled = FALSE)
+    return(chart)
+  }
+})
+
+
+#learning online chart
+output$learning_online_chart <- renderHighchart({
+  if (input$display_option == "By Percentage") {
+    chart <- highchart() %>%
+      hc_chart(type = "bar") %>%
+      hc_xAxis(categories = learning_online()$LearnCodeOnline) %>%
+      hc_yAxis(title = list(text = "Percentage")) %>%
+      hc_tooltip(pointFormat = "Percentage: {point.y:.2f}%") %>%
+      hc_plotOptions(
+        series = list(dataLabels = list(enabled = TRUE, format = "{point.y:.2f}%"))
+      ) %>%
+      hc_add_series(data = learning_online()$percentage, name = "Percentage") %>%
+      hc_legend(enabled = FALSE)
+    return(chart)
+  } else {
+    chart <- highchart() %>%
+      hc_chart(type = "bar") %>%
+      hc_xAxis(categories = learning_online()$LearnCodeOnline) %>%
+      hc_yAxis(title = list(text = "Count")) %>%
+      hc_tooltip(pointFormat = "Count: {point.y}") %>%
+      hc_plotOptions(
+        series = list(dataLabels = list(enabled = TRUE, format = "{point.y}"))
+      ) %>%
+      hc_add_series(data = learning_online()$count, name = "Count") %>%
+      hc_legend(enabled = FALSE)
+    return(chart)
+  }
+})
+
+```
+
+Developer Insights {data-icon="fa-users"} 
+=====================================  
+
+Inputs {.sidebar}
+-------------------------------------
+
+```{r}
+radioButtons("display_option", "Display Option:",
+             choices = c("By Percentage", "By Count"),
+             selected = "By Percentage")
+```
+
+Row
+-------------------------------------
+    
+### Education Level
+    
+```{r}
+# Create the Highchart:
+highchartOutput("edlevel_chart")
+```
+ 
+### How are people learning to code?
+    
+
+```{r}
+highchartOutput("learning_chart")
+
+``` 
+
+Row
+-------------------------------------
+    
+### Top 10 resources for learning to code.
+    
+```{r}
+highchartOutput("learning_online_chart")
+```
+    
+### Chart 4
+
+```{r}
+```
+
+About {data-icon="fa-question"} 
+=====================================  
+This application was developed by [Soham Bhagwat](sohambhagwat.tech) to find the trends in the homeschooling in the United States.
+
+The data is collected by [Washington Post](https://www.washingtonpost.com/) and is available [here](https://github.com/washingtonpost/data_home_schooling/).
+
+The application is built with the [Shiny](http://shiny.rstudio.com) framework for the [R programming language](https://www.r-project.org/). The application layout is produced with the [flexdashboard](http://rstudio.github.io/flexdashboard/index.html) package, and the charts and maps use [Plotly](http://plot.ly), [Highcharts](http://www.highcharts.com/), and [ggplot2](http://ggplot2.org/), all accessed through their corresponding R packages.
+
+
+To learn more about my work, [visit my website](https://sohambhagwat.tech) or [connect with me on Linkedin](https://www.linkedin.com/in/soham-bhagwat/).
+
+I'm actively looking for entry level Data Scientist and Data Engineer roles and my resume can be found [here](https://www.sohambhagwat.tech/pdf/Soham_Bhagwat.pdf) or the best way to reach me is via [email](sohambhagwat2@gmail.com) 
+
+
