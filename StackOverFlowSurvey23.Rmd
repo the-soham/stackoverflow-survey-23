@@ -4,11 +4,12 @@ output:
   flexdashboard::flex_dashboard:
     theme: yeti
     social: menu
-    orientation: columns
+    orientation: columns    
     vertical_layout: fill
 engine: shiny
 runtime: shiny
 ---
+
 ```{r setup, include=FALSE}
 library(flexdashboard)
 library(dplyr)
@@ -52,92 +53,97 @@ learning_online <- reactive({
 })
 
 
-# Create charts
-output$edlevel_chart <- renderHighchart({
-  if (input$display_option == "By Percentage") {
+online_courses <- reactive({
+  survey|>
+  filter(!is.na(LearnCodeCoursesCert)) |>
+  separate_rows(LearnCodeCoursesCert, sep = ";") |>
+  group_by(LearnCodeCoursesCert) |>
+  summarise(count = n())  |>
+  mutate(percentage = (count/ nrow(survey |>filter(!is.na(LearnCodeCoursesCert)))) * 100) |>
+  arrange(desc(percentage))
+})
+
+
+
+generate_highchart <- function(data, chart_type, display_option, xAxisCategories) {
+  if (display_option == "By Percentage") {
     chart <- highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_xAxis(categories = edlevel_data()$EdLevel) %>%
+      hc_chart(type = chart_type) %>%
+      hc_xAxis(categories = xAxisCategories) %>%
       hc_yAxis(title = list(text = "Percentage")) %>%
       hc_tooltip(pointFormat = "Percentage: {point.y:.2f}%") %>%
       hc_plotOptions(
         series = list(dataLabels = list(enabled = TRUE, format = "{point.y:.2f}%"))
       ) %>%
-      hc_add_series(data = edlevel_data()$percentage, name = "Percentage") %>%
+      hc_add_series(data = data$percentage, name = "Percentage") %>%
       hc_legend(enabled = FALSE)
-    return(chart)
   } else {
     chart <- highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_xAxis(categories = edlevel_data()$EdLevel) %>%
+      hc_chart(type = chart_type) %>%
+      hc_xAxis(categories = xAxisCategories) %>%
       hc_yAxis(title = list(text = "Count")) %>%
       hc_tooltip(pointFormat = "Count: {point.y}") %>%
       hc_plotOptions(
         series = list(dataLabels = list(enabled = TRUE, format = "{point.y}"))
       ) %>%
-      hc_add_series(data = edlevel_data()$count, name = "Count") %>%
+      hc_add_series(data = data$count, name = "Count") %>%
       hc_legend(enabled = FALSE)
-    return(chart)
   }
+
+  return(chart)
+}
+
+
+output$edlevel_chart <- renderHighchart({
+  data <- edlevel_data()
+  chart_type <- "bar"
+  display_option <- input$display_option
+  xAxisCategories <- data$EdLevel  # Adjust this line based on the structure of your data
+  generate_highchart(data, chart_type, display_option, xAxisCategories)
 })
+
 
 output$learning_chart <- renderHighchart({
-  if (input$display_option == "By Percentage") {
-    chart <- highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_xAxis(categories = learning_data()$LearnCode) %>%
-      hc_yAxis(title = list(text = "Percentage")) %>%
-      hc_tooltip(pointFormat = "Percentage: {point.y:.2f}%") %>%
-      hc_plotOptions(
-        series = list(dataLabels = list(enabled = TRUE, format = "{point.y:.2f}%"))
-      ) %>%
-      hc_add_series(data = learning_data()$percentage, name = "Percentage") %>%
-      hc_legend(enabled = FALSE)
-    return(chart)
-  } else {
-    chart <- highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_xAxis(categories = learning_data()$LearnCode) %>%
-      hc_yAxis(title = list(text = "Count")) %>%
-      hc_tooltip(pointFormat = "Count: {point.y}") %>%
-      hc_plotOptions(
-        series = list(dataLabels = list(enabled = TRUE, format = "{point.y}"))
-      ) %>%
-      hc_add_series(data = learning_data()$count, name = "Count") %>%
-      hc_legend(enabled = FALSE)
-    return(chart)
-  }
+  data <- learning_data()
+  chart_type <- "bar"
+  display_option <- input$display_option
+  xAxisCategories <- data$LearnCode  # Adjust this line based on the structure of your data
+  generate_highchart(data, chart_type, display_option, xAxisCategories)
 })
 
-
-#learning online chart
 output$learning_online_chart <- renderHighchart({
-  if (input$display_option == "By Percentage") {
-    chart <- highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_xAxis(categories = learning_online()$LearnCodeOnline) %>%
-      hc_yAxis(title = list(text = "Percentage")) %>%
-      hc_tooltip(pointFormat = "Percentage: {point.y:.2f}%") %>%
-      hc_plotOptions(
-        series = list(dataLabels = list(enabled = TRUE, format = "{point.y:.2f}%"))
-      ) %>%
-      hc_add_series(data = learning_online()$percentage, name = "Percentage") %>%
-      hc_legend(enabled = FALSE)
-    return(chart)
-  } else {
-    chart <- highchart() %>%
-      hc_chart(type = "bar") %>%
-      hc_xAxis(categories = learning_online()$LearnCodeOnline) %>%
-      hc_yAxis(title = list(text = "Count")) %>%
-      hc_tooltip(pointFormat = "Count: {point.y}") %>%
-      hc_plotOptions(
-        series = list(dataLabels = list(enabled = TRUE, format = "{point.y}"))
-      ) %>%
-      hc_add_series(data = learning_online()$count, name = "Count") %>%
-      hc_legend(enabled = FALSE)
-    return(chart)
-  }
+  data <- learning_online()
+  chart_type <- "bar"
+  display_option <- input$display_option
+  xAxisCategories <- data$LearnCodeOnline  # Adjust this line based on the structure of your data
+  generate_highchart(data, chart_type, display_option, xAxisCategories)
 })
+
+
+output$online_courses_chart <- renderHighchart({
+  data <- online_courses()
+  chart_type <- "bar"
+  display_option <-input$display_option
+  xAxisCategories <- data$LearnCodeCoursesCert
+  
+  generate_highchart(data, chart_type, display_option, xAxisCategories)
+})
+
+
+
+prog_online <- function(data, column, separator, count_column, display_option, top_n = NULL) {
+  data %>%
+    filter(!is.na({{column}}) & !grepl("Other \\(Please specify\\)", {{column}})) %>%
+    separate_rows({{column}}, sep = {{separator}}) %>%
+    group_by({{column}}) %>%
+    summarise(count = n()) %>%
+    mutate(percentage = (count / nrow(data)) * 100) %>%
+    arrange(desc(percentage)) %>%
+    top_n(ifelse(is.null(top_n), n(), top_n))
+}
+
+
+
 
 ```
 
@@ -180,10 +186,47 @@ Row
 highchartOutput("learning_online_chart")
 ```
     
-### Chart 4
+### Top Online Learning Platforms
 
 ```{r}
+highchartOutput("online_courses_chart")
 ```
+
+
+TechTrends {data-icon="fa-line-chart"} 
+=====================================  
+
+Inputs {.sidebar}
+-------------------------------------
+
+
+```{r}
+selectInput("dropdown", "Select Category", choices = c("Programming, scripting, and markup languages", "Databases","Cloud platforms", "Web frameworks and technologies", "Other frameworks and libraries", "Other tools","Integrated development environment", "Asynchronous tools", "Synchronous tools"))
+```
+
+Column 
+-------------------------------------
+    
+### Chart 1
+    
+```{r}
+highchartOutput('prog_lang_chart')
+```
+   
+Column {.tabset}
+-------------------------------------
+   
+### Chart 2
+
+```{r}
+```   
+ 
+### Chart 3
+    
+```{r}
+```
+
+
 
 About {data-icon="fa-question"} 
 =====================================  

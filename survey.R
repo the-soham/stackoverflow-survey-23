@@ -61,7 +61,7 @@ learn_online$percentage = (learn_online$count / nrow(survey|>filter(!is.na(Learn
 
 
 learn_online <- learn_online[order(learn_online$percentage, decreasing = TRUE),]
-learn_online
+
 
 
 lonl = survey |> 
@@ -72,4 +72,40 @@ lonl = survey |>
   mutate(percentage = (count / nrow(survey)) * 100) |>
   arrange(desc(percentage))
 
-lonl
+online_courses = survey|>
+  filter(!is.na(LearnCodeCoursesCert)) |>
+  separate_rows(LearnCodeCoursesCert, sep = ";") |>
+  group_by(LearnCodeCoursesCert) |>
+  summarise(count = n())  |>
+  mutate(percentage = (count/ nrow(survey |>filter(!is.na(LearnCodeCoursesCert)))) * 100) |>
+  arrange(desc(percentage))
+
+glimpse(survey)
+
+prog_lang = survey |> 
+  filter(!is.na(LanguageHaveWorkedWith)) |>
+  separate_rows(LanguageHaveWorkedWith, sep = ";") |>
+  group_by(LanguageHaveWorkedWith) |>
+  summarise (count = n()) |>
+  mutate(percentage = (count/ nrow( survey |>filter(!is.na(LanguageHaveWorkedWith)))) * 100) |>
+  arrange(desc(percentage)) |>
+  top_n(10)
+
+prog_lang
+
+generate_reactive_chart_data <- function(data, column, separator, count_column, display_option, top_n = NULL) {
+  data %>%
+    filter(!is.na({{column}}) & !grepl("Other \\(Please specify\\)", {{column}})) %>%
+    separate_rows({{column}}, sep = {{separator}}) %>%
+    group_by({{column}}) %>%
+    summarise(count = n()) %>%
+    mutate(percentage = (count / nrow(data)) * 100) %>%
+    arrange(desc(percentage)) %>%
+    top_n(ifelse(is.null(top_n), n(), top_n))
+}
+
+
+
+prog_lang_top10 <-   generate_reactive_chart_data(survey, LanguageHaveWorkedWith, ";", "count", input$display_option, top_n = 5)
+
+print(prog_lang_top10, n=41)
